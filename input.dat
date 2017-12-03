@@ -1,0 +1,11 @@
+'hhg'
+32    ! Nx
+142    ! NK
+8d0 1d0 1d0 !length_x,length_y,length_z
+-0.37d0 0d0 0d0   !V1,V2,V3
+0.01d0  ! dt*5500 = 2*pi/omega
+420000 ! Nt
+96.66d0  ! Tp_fs1
+0.38745d0 ! omega_ev1
+0.211d0   ! f0_VAA_1
+0.0d0
