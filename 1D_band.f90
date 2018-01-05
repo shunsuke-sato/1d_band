@@ -41,6 +41,7 @@ module global_variables
   logical :: if_Houston_proj
   real(8) :: Tc_Houston_proj
   complex(8),allocatable :: zpsi_Houston_projected(:,:,:)
+  complex(8),allocatable :: zpsi_Houston_remained(:,:,:)
   real(8),allocatable :: curr00(:),curr01(:),curr11(:)
   
 
@@ -701,6 +702,7 @@ subroutine init_Houston_proj
   allocate(work_lp(lwork),rwork(3*Nx-2),w(Nx))
 
   allocate(zpsi_Houston_projected(Nx,NBocc,NK))
+  allocate(zpsi_Houston_remained(Nx,NBocc,NK))
   allocate(curr00(0:Nt),curr01(0:Nt),curr11(0:Nt))
 
   do ik=1,NK
@@ -731,3 +733,108 @@ subroutine init_Houston_proj
 
   return
 end subroutine init_Houston_proj
+ !--------------------------------------------------------------------------------------------------
+ subroutine current_Houston_proj(iter)
+   use global_variables
+   implicit none
+   integer :: ik,ib
+   integer :: ix,iter
+   real(8) :: jxt,jxt2
+
+   zpsi_Houston_remained = zpsi - zpsi_Houston_projected
+
+! remained-remained
+   jxt=0d0
+
+   do ik=1,NK
+     do ib=1,NBocc
+       jxt2=0d0
+       jxt2=jxt2+aimag(conjg(zpsi_Houston_remained(1,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_remained(2,ib,ik)-zpsi_Houston_remained(Nx,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_remained(3,ib,ik)-zpsi_Houston_remained(Nx-1,ib,ik)))) &
+         +aimag(conjg(zpsi_Houston_remained(2,ib,ik))*( & 
+         &+G_coef(1)*(zpsi_Houston_remained(3,ib,ik)-zpsi_Houston_remained(1,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_remained(4,ib,ik)-zpsi_Houston_remained(Nx,ib,ik))))
+       do ix=3,Nx-2
+         jxt2=jxt2+aimag(conjg(zpsi_Houston_remained(ix,ib,ik))*( &
+           &+G_coef(1)*(zpsi_Houston_remained(ix+1,ib,ik)-zpsi_Houston_remained(ix-1,ib,ik)) &
+           &+G_coef(2)*(zpsi_Houston_remained(ix+2,ib,ik)-zpsi_Houston_remained(ix-2,ib,ik))))
+       end do
+       jxt2=jxt2+aimag( conjg(zpsi_Houston_remained(Nx-1,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_remained(Nx,ib,ik)-zpsi_Houston_remained(Nx-2,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_remained(1,ib,ik)-zpsi_Houston_remained(Nx-3,ib,ik)))) &
+         +aimag(conjg(zpsi_Houston_remained(Nx,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_remained(1,ib,ik)-zpsi_Houston_remained(Nx-1,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_remained(2,ib,ik)-zpsi_Houston_remained(Nx-2,ib,ik))))
+
+       jxt=jxt+jxt2*H+kx(ik)+Acx*sum(abs(zpsi_Houston_remained(:,ib,ik))**2)*H
+     end do
+   end do
+
+   curr00(iter)=jxt*dble(Nelec)/dble(NK*NBocc)/(length_x*length_y*length_z)
+
+
+! projected-projected
+   jxt=0d0
+
+   do ik=1,NK
+     do ib=1,NBocc
+       jxt2=0d0
+       jxt2=jxt2+aimag(conjg(zpsi_Houston_projected(1,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_projected(2,ib,ik)-zpsi_Houston_projected(Nx,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(3,ib,ik)-zpsi_Houston_projected(Nx-1,ib,ik)))) &
+         +aimag(conjg(zpsi_Houston_projected(2,ib,ik))*( & 
+         &+G_coef(1)*(zpsi_Houston_projected(3,ib,ik)-zpsi_Houston_projected(1,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(4,ib,ik)-zpsi_Houston_projected(Nx,ib,ik))))
+       do ix=3,Nx-2
+         jxt2=jxt2+aimag(conjg(zpsi_Houston_projected(ix,ib,ik))*( &
+           &+G_coef(1)*(zpsi_Houston_projected(ix+1,ib,ik)-zpsi_Houston_projected(ix-1,ib,ik)) &
+           &+G_coef(2)*(zpsi_Houston_projected(ix+2,ib,ik)-zpsi_Houston_projected(ix-2,ib,ik))))
+       end do
+       jxt2=jxt2+aimag( conjg(zpsi_Houston_projected(Nx-1,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_projected(Nx,ib,ik)-zpsi_Houston_projected(Nx-2,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(1,ib,ik)-zpsi_Houston_projected(Nx-3,ib,ik)))) &
+         +aimag(conjg(zpsi_Houston_projected(Nx,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_projected(1,ib,ik)-zpsi_Houston_projected(Nx-1,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(2,ib,ik)-zpsi_Houston_projected(Nx-2,ib,ik))))
+
+       jxt=jxt+jxt2*H+kx(ik)+Acx*sum(abs(zpsi_Houston_projected(:,ib,ik))**2)*H
+     end do
+   end do
+
+   curr11(iter)=jxt*dble(Nelec)/dble(NK*NBocc)/(length_x*length_y*length_z)
+
+! remained-projected
+   jxt=0d0
+
+   do ik=1,NK
+     do ib=1,NBocc
+       jxt2=0d0
+       jxt2=jxt2+aimag(conjg(zpsi_Houston_remained(1,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_projected(2,ib,ik)-zpsi_Houston_projected(Nx,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(3,ib,ik)-zpsi_Houston_projected(Nx-1,ib,ik)))) &
+         +aimag(conjg(zpsi_Houston_projected(2,ib,ik))*( & 
+         &+G_coef(1)*(zpsi_Houston_projected(3,ib,ik)-zpsi_Houston_projected(1,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(4,ib,ik)-zpsi_Houston_projected(Nx,ib,ik))))
+       do ix=3,Nx-2
+         jxt2=jxt2+aimag(conjg(zpsi_Houston_remained(ix,ib,ik))*( &
+           &+G_coef(1)*(zpsi_Houston_projected(ix+1,ib,ik)-zpsi_Houston_projected(ix-1,ib,ik)) &
+           &+G_coef(2)*(zpsi_Houston_projected(ix+2,ib,ik)-zpsi_Houston_projected(ix-2,ib,ik))))
+       end do
+       jxt2=jxt2+aimag( conjg(zpsi_Houston_remained(Nx-1,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_projected(Nx,ib,ik)-zpsi_Houston_projected(Nx-2,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(1,ib,ik)-zpsi_Houston_projected(Nx-3,ib,ik)))) &
+         +aimag(conjg(zpsi_Houston_projected(Nx,ib,ik))*( &
+         &+G_coef(1)*(zpsi_Houston_projected(1,ib,ik)-zpsi_Houston_projected(Nx-1,ib,ik)) &
+         &+G_coef(2)*(zpsi_Houston_projected(2,ib,ik)-zpsi_Houston_projected(Nx-2,ib,ik))))
+
+       jxt=jxt+jxt2*H+kx(ik)+Acx*sum(conjg(zpsi_Houston_remained(:,ib,ik))*zpsi_Houston_projected(:,ib,ik))*H
+     end do
+   end do
+
+   curr01(iter)=jxt*dble(Nelec)/dble(NK*NBocc)/(length_x*length_y*length_z)   
+
+   
+
+   return
+ end subroutine current_Houston_proj
