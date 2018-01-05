@@ -37,6 +37,13 @@ module global_variables
   
   complex(8),allocatable :: zdensity_matrix(:,:),zdensity_matrix0(:),zdensity_matrix0_GS(:)
 
+! Houston projection
+  logical :: if_Houston_proj
+  real(8) :: Tc_Houston_proj
+  complex(8),allocatable :: zpsi_Houston_projected(:,:,:)
+  real(8),allocatable :: curr00(:),curr01(:),curr11(:)
+  
+
 
 end module global_variables
 !--------------------------------------------------------------------------------------------------
@@ -46,7 +53,7 @@ program main
   integer :: iter
   integer :: ik,ib,ix1,ix2,ib2
   integer :: N_ex_elec
-  real(8) :: s
+  real(8) :: s, tt
   character(50) :: cnum
   real(8),allocatable :: nex_k(:,:,:)
 
@@ -83,9 +90,14 @@ program main
   call input_Ac
 
 
+  if_Houston_proj = .true.
+  Tc_Houston_proj = pi/(omega_ev1/(2d0*Ry))
+
+  
 !  stop
 
   open(10,file=trim(filename)//'_Ac_j.out')
+  if(if_Houston_proj) open(20,file=trim(filename)//'_Ac_j_Hp.out')
   do iter=0,Nt
 
 ! density matrix
@@ -96,8 +108,27 @@ program main
     call dt_evolve    
 
     write(10,'(100e26.16)')dt*dble(iter),Ac(iter),curr(iter),-(Ac(iter+1)-Ac(iter-1))/dt*0.5d0
+
+    if(if_Houston_proj)then
+       tt = dt*dble(iter)
+       if((tt-Tc_Houston_proj)*(tt-dt-Tc_Houston_proj)<=0d0)then
+          Acx = Ac(iter+1)
+          call init_Houston_proj
+       else if(tt-Tc_Houston_proj>=0d0)then
+          Acx=Ac(iter)
+!          call current_Houston_proj(ite)
+          Acx=0.5d0*(Ac(iter) + Ac(iter+1))
+          call dt_evolve_Houston_proj
+          write(20,'(100e26.16)')dt*dble(iter),Ac(iter),curr00(iter) &
+               ,curr01(iter),curr11(iter),-(Ac(iter+1)-Ac(iter-1))/dt*0.5d0
+       end if
+       
+       
+    end if
+    
   end do
   close(10)
+  if(if_Houston_proj) close(20)
 
 
   allocate(nex_k(NB,NBocc,NK))
@@ -445,6 +476,28 @@ subroutine preparation
    return
  end subroutine dt_evolve
  !--------------------------------------------------------------------------------------------------
+ subroutine dt_evolve_Houston_proj
+   use global_variables
+   implicit none
+   complex(8) :: zfac
+   integer :: ik,ib,iexp
+
+   do ik=1,NK
+     do ib=1,NBocc
+       ztpsi(:)=zpsi_Houston_projected(:,ib,ik)
+       zfac=1d0
+       do iexp=1,4
+         zfac=zfac*(-zI*dt)/dble(iexp)
+         call hpsi(ik)
+         zpsi_Houston_projected(:,ib,ik)=zpsi(:,ib,ik)+zfac*zhtpsi(:)
+         ztpsi(:)=zhtpsi(:)
+       end do
+     end do
+   end do
+
+   return
+ end subroutine dt_evolve_Houston_proj
+ !--------------------------------------------------------------------------------------------------
  subroutine current(iter)
    use global_variables
    implicit none
@@ -628,3 +681,53 @@ subroutine density_matrix0
 
   return
 end subroutine density_matrix0
+
+!--------------------------------------------------------------------------------------------------
+subroutine init_Houston_proj
+  use global_variables
+  implicit none
+  complex(8) :: za(Nx,Nx),zv(Nx,Nx)
+  real(8)  :: ss
+  complex(8) :: zs
+  integer :: ik,ib,ix,jx,jx2
+  
+  !LAPACK
+  integer :: lwork
+  complex(8),allocatable :: work_lp(:)
+  real(8),allocatable :: rwork(:),w(:)
+  integer :: info
+
+  lwork=6*Nx
+  allocate(work_lp(lwork),rwork(3*Nx-2),w(Nx))
+
+  allocate(zpsi_Houston_projected(Nx,NBocc,NK))
+  allocate(curr00(0:Nt),curr01(0:Nt),curr11(0:Nt))
+
+  do ik=1,NK
+     za=0d0
+     do ix=1,Nx
+        do jx=ix-2,ix+2
+           jx2=jx
+           if(jx<=0)jx2=Nx+jx
+           if(jx>Nx)jx2=jx-Nx
+           za(ix,jx2)=-0.5d0*(L_coef(jx-ix)+zI*2d0*(Kx(ik)+Acx)*G_coef(jx-ix))
+        end do
+        za(ix,ix)=za(ix,ix)+0.5d0*(kx(ik)+Acx)**2+Veff(ix)
+     end do
+
+     Call zheev('V', 'U', Nx, za, Nx, w, work_lp, lwork, rwork, info)
+
+     do ib=1,NBocc
+       ss=sum(abs(za(:,ib))**2)*H
+       za(:,ib)=za(:,ib)/sqrt(ss)
+
+       zs = sum(conjg(za(:,ib))*zpsi(:,ib,ik))*H
+       zpsi_Houston_projected(:,ib,ik) = zpsi(:,ib,ik) - zs*za(:,ib)
+       
+     end do
+  end do
+  
+
+
+  return
+end subroutine init_Houston_proj
