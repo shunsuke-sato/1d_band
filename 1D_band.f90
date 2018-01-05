@@ -27,7 +27,8 @@ module global_variables
   real(8) :: Tp_fs1,omega_ev1,IWcm2_1,Tp_fs2,omega_ev2,IWcm2_2,T1_T2_fs
   real(8) :: f0_VAA_1
   real(8) :: phi_CEP_1,phi_CEP_2
-  character(50) :: filename,filename_dm
+  character(256) :: filename,filename_dm
+  character(256)  :: c_env_shape = 'cos4'
 
   real(8) :: n_ex,e_ex
 
@@ -375,20 +376,31 @@ subroutine preparation
 !   tpulse_1=2d0*pi/omega_1 ! (single-cycle) pulse duration in a.u.
 
    allocate(Ac(-1:Nt+1)); Ac = 0d0
+   c_env_shape = 'cos4'
+   select case(c_env_shape)
+   case('cos4')
  ! pulse shape : A(t)=f0/omega*sin(Pi t/T)**2 *cos (omega t+phi_CEP) 
  ! pump laser
-       do iter=0,Nt+1
+      do iter=0,Nt+1
          tt=iter*dt
-!         if (tt<tpulse_1*0.5d0) then !CW
+         !         if (tt<tpulse_1*0.5d0) then !CW
          if (tt<tpulse_1) then !Pulse
-           Ac(iter)=-f0_1/omega_1*(cos(pi*(tt-0.5d0*tpulse_1)/tpulse_1))**4*cos(omega_1*(tt-0.5d0*tpulse_1)+phi_CEP_1*2d0*pi)
-!           Ac(iter)=-f0_1/omega_1*(sin(pi*tt/tpulse_1))**2
-!           Ac(iter)=-f0_1/omega_1*(sin(0.5d0*pi*tt/tpulse_1))**2
+            Ac(iter)=-f0_1/omega_1*(cos(pi*(tt-0.5d0*tpulse_1)/tpulse_1))**4*cos(omega_1*(tt-0.5d0*tpulse_1)+phi_CEP_1*2d0*pi)
+            !           Ac(iter)=-f0_1/omega_1*(sin(pi*tt/tpulse_1))**2
+            !           Ac(iter)=-f0_1/omega_1*(sin(0.5d0*pi*tt/tpulse_1))**2
          else
-!           Ac(iter)=-f0_1/omega_1*cos(omega_1*tt+phi_CEP_1) ! CW
-           Ac(iter)=0d0 ! Pulse
+            !           Ac(iter)=-f0_1/omega_1*cos(omega_1*tt+phi_CEP_1) ! CW
+            Ac(iter)=0d0 ! Pulse
          end if
-       enddo
+      enddo
+   case('cw')
+      do iter=0,Nt+1
+         tt=iter*dt
+         Ac(iter)=f0_1/omega_1*(cos(omega_1*tt)-1d0)
+      end do
+   case default
+      stop 'invalid c_env_shape'
+   end select
 
    return
  end subroutine input_Ac
