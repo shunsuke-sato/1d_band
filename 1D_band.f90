@@ -411,9 +411,28 @@ subroutine preparation
    return
  end subroutine input_Ac_kick
  !--------------------------------------------------------------------------------------------------
+ ! To Do*
+ ! Lanchosz + exact diagonalization
+ ! Direct Krylov + Taylor
  subroutine dt_evolve
    use global_variables
    implicit none
+   integer,parameter :: n_Taylor   = 0
+   integer,parameter :: n_Lanchosz = 1
+   integer,parameter :: n_Krylov_direct = 2
+   integer,parameter :: n_propagator = n_Taylor
+
+   select case(n_propagator)
+   case(n_Taylor)
+      call dt_evolve_Taylor
+   case default
+      stop "Invalid propagator"
+   end select
+   
+
+ end subroutine dt_evolve
+  !--------------------------------------------------------------------------------------------------
+ subroutine dt_evolve_Taylor
    complex(8) :: zfac
    integer :: ik,ib,iexp
 
@@ -431,7 +450,7 @@ subroutine preparation
    end do
 
    return
- end subroutine dt_evolve
+ end subroutine dt_evolve_Taylor
  !--------------------------------------------------------------------------------------------------
  subroutine current(iter)
    use global_variables
