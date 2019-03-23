@@ -233,7 +233,7 @@ subroutine preparation
   real(8),allocatable :: rwork(:),w(:)
   integer :: info
 
-  lwork=6*Nx
+  lwork=6*Nx**2
   allocate(work_lp(lwork),rwork(3*Nx-2),w(Nx))
 
 
