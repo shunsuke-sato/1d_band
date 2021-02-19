@@ -128,7 +128,7 @@ subroutine preparation
   integer :: ix,ik
   real(8) :: x
   real(8) :: lambda
-  real(8) :: sigma_t,xp1,xp2,xp3,xp4,xm1,xm2,xm3,xm4
+  real(8) :: sigma_t,Vg,xp1,xp2,xp3,xp4,xm1,xm2,xm3,xm4
 
 
    H=length_x/dble(Nx)
@@ -182,36 +182,38 @@ subroutine preparation
 
 
    sigma_t=1.5d0
+   Vg = -0.9d0
    do ix=1,Nx
 
-     Veff(ix) = -V1*(1d0+cos(2d0*pi*Lx(ix)/length_x))
+!     Veff(ix) = -V1*(1d0+cos(2d0*pi*Lx(ix)/length_x))
 
 !     Veff(ix)=V1*sin(pi/(length_x)*Lx(ix))**2 &
 !       &+V2*sin(pi/(length_x)*Lx(ix))**4 &
 !       &+V3*sin(pi/(length_x)*Lx(ix))**6 
 !     Veff(ix)=V1*cos(pi/length_x*Lx(ix))**2
       !     Veff(ix)=-0.7d0*(1d0+tanh(Lx(ix)+0.8d0))*(1d0+tanh(-Lx(ix)+0.8d0))
-!      xp1 = Lx(ix)+length_x
-!      xm1 = Lx(ix)-length_x
-!      xp2 = Lx(ix)+2d0*length_x
-!      xm2 = Lx(ix)-2d0*length_x
-!      xp3 = Lx(ix)+3d0*length_x
-!      xm3 = Lx(ix)-3d0*length_x
-!      xp4 = Lx(ix)+4d0*length_x
-!      xm4 = Lx(ix)-4d0*length_x
+
+      xp1 = Lx(ix)+length_x
+      xm1 = Lx(ix)-length_x
+      xp2 = Lx(ix)+2d0*length_x
+      xm2 = Lx(ix)-2d0*length_x
+      xp3 = Lx(ix)+3d0*length_x
+      xm3 = Lx(ix)-3d0*length_x
+      xp4 = Lx(ix)+4d0*length_x
+      xm4 = Lx(ix)-4d0*length_x
 ! 0.1083
 ! 0.1085
-!      Veff(ix)=0.1084d0*(&
-!           Lx(ix)*exp(-0.5d0*(Lx(ix)/sigma_t)**2) &
-!           +xp1*exp(-0.5d0*(xp1/sigma_t)**2) &
-!           +xm1*exp(-0.5d0*(xm1/sigma_t)**2) &
-!           +xp2*exp(-0.5d0*(xp2/sigma_t)**2) &
-!           +xm2*exp(-0.5d0*(xm2/sigma_t)**2) &
-!           +xp3*exp(-0.5d0*(xp3/sigma_t)**2) &
-!           +xm3*exp(-0.5d0*(xm3/sigma_t)**2) &
-!           +xp4*exp(-0.5d0*(xp4/sigma_t)**2) &
-!           +xm4*exp(-0.5d0*(xm4/sigma_t)**2) &           
-!      )
+      Veff(ix)=Vg*(&
+           exp(-0.5d0*(Lx(ix)/sigma_t)**2) &
+           +exp(-0.5d0*(xp1/sigma_t)**2) &
+           +exp(-0.5d0*(xm1/sigma_t)**2) &
+           +exp(-0.5d0*(xp2/sigma_t)**2) &
+           +exp(-0.5d0*(xm2/sigma_t)**2) &
+           +exp(-0.5d0*(xp3/sigma_t)**2) &
+           +exp(-0.5d0*(xm3/sigma_t)**2) &
+           +exp(-0.5d0*(xp4/sigma_t)**2) &
+           +exp(-0.5d0*(xm4/sigma_t)**2) &           
+      )
 
 
    end do
@@ -300,8 +302,15 @@ subroutine preparation
      end do
    close(10)
 
+   write(*,*)'k(NK)=',kx(NK)
    write(*,*)'Band gap       =',spe(NBocc+1,NK)-spe(NBocc,NK),(spe(NBocc+1,NK)-spe(NBocc,NK))*Ry*2d0
    write(*,*)'effective mass =',1d0/(1d0/mass_e(NBocc+1,NK)-1d0/mass_e(NBocc,NK)),mass_e(NBocc,NK),mass_e(NBocc+1,Nk)
+
+   write(*,*)'k(NK/2+1)=',kx(NK/2+1)
+   write(*,*)'Band gap       =',spe(NBocc+1,NK/2+1)-spe(NBocc,NK/2+1)&
+     ,(spe(NBocc+1,NK/2+1)-spe(NBocc,NK/2+1))*Ry*2d0
+   write(*,*)'effective mass =',1d0/(1d0/mass_e(NBocc+1,NK/2+1)-1d0/mass_e(NBocc,NK/2+1))&
+     ,mass_e(NBocc,NK/2+1),mass_e(NBocc+1,Nk/2+1)
 
    zpsi(:,1:NBocc,:)=zpsi_GS(:,1:NBocc,:)
 
