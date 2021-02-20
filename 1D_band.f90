@@ -180,7 +180,9 @@ subroutine preparation
      end do
    end do
 
-
+!PRL 107, 167407 (2011)
+! Eg  = 3.35 eV
+!mass = 0.13 me
    sigma_t=1.5d0
    Vg = -0.9d0
    do ix=1,Nx
