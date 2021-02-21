@@ -180,11 +180,17 @@ subroutine preparation
      end do
    end do
 
-!PRL 107, 167407 (2011)
-! Eg  = 3.35 eV
-!mass = 0.13 me
-   sigma_t=1.5d0
-   Vg = -0.9d0
+!!PRL 107, 167407 (2011)
+!! Eg  = 3.35 eV
+!!mass = 0.13 me
+
+!PRR
+! Eg = 4.18 eV
+! mass = 0.083 me
+   sigma_t=2.6d0
+   Vg = -1.83d0
+   write(*,"(A,2x,e26.16e3)")"sigma_t",sigma_t
+   write(*,"(A,2x,e26.16e3)")"Vg     ",Vg
    do ix=1,Nx
 
 !     Veff(ix) = -V1*(1d0+cos(2d0*pi*Lx(ix)/length_x))

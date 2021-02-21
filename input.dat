@@ -1,5 +1,5 @@
 'hhg'
-32    ! Nx
+64    ! Nx
 513    ! NK
 8d0 1d0 1d0 !length_x,length_y,length_z
 -0.37d0 0d0 0d0   !V1,V2,V3
