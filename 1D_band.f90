@@ -92,7 +92,7 @@ program main
     Acx=Ac(iter)
     call current(iter)
     Acx=0.5d0*(Ac(iter) + Ac(iter+1))
-    call dt_evolve    
+    call dt_evolve(iter)
 
     write(10,'(100e26.16)')dt*dble(iter),Ac(iter),curr(iter),-(Ac(iter+1)-Ac(iter-1))/dt*0.5d0
   end do
@@ -411,9 +411,37 @@ subroutine preparation
    return
  end subroutine input_Ac_kick
  !--------------------------------------------------------------------------------------------------
- subroutine dt_evolve
+ subroutine dt_evolve(iter)
    use global_variables
    implicit none
+   integer,intent(in) :: iter
+
+
+    Acx=Ac(iter)
+    call dt_evolve_half_dt
+
+    Acx=Ac(iter+1)
+    call dt_evolve_half_dt
+
+
+ end subroutine dt_evolve
+ !--------------------------------------------------------------------------------------------------
+ subroutine dt_evolve_half_dt
+   use global_variables
+   implicit none
+   real(8) :: dt_t
+
+   dt_t = 0.5d0*dt
+   call prop_taylor(dt_t)
+
+!   call prop_lanczos(dt_t)
+
+ end subroutine dt_evolve_half_dt
+ !--------------------------------------------------------------------------------------------------
+ subroutine prop_taylor(dt_t)
+   use global_variables
+   implicit none
+   real(8),intent(in) :: dt_t
    complex(8) :: zfac
    integer :: ik,ib,iexp
 
