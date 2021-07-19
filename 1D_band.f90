@@ -459,7 +459,93 @@ subroutine preparation
    end do
 
    return
- end subroutine dt_evolve
+ end subroutine prop_taylor
+ !--------------------------------------------------------------------------------------------------
+ subroutine prop_lanczos(dt_t)
+   use global_variables
+   implicit none
+   real(8),intent(in) :: dt_t
+   integer,parameter :: nlan = 8
+   complex(8) :: zpsi_Lan(Nx,nlan)
+   real(8) :: alpha_lan(nlan),beta_lan(2:nlan)
+   real(8),allocatable :: ham_lan(:,:)
+   complex(8),allocatable :: zc(:)
+   real(8) :: ss
+   integer :: ik,ib,ilan,j
+!==LAPACK
+   integer :: nmax
+   integer :: lwork
+   real(8),allocatable :: work_lp(:)
+   real(8),allocatable :: rwork(:),w(:)
+   integer :: info
+
+!  lwork = 6*nmax**2
+!  allocate(work_lp(lwork),rwork(3*nmax-2),w(nmax))
+!==LAPACK
+
+   do ik=1,NK
+     do ib=1,NBocc
+
+       ss = sum(abs(zpsi(:,ib,ik))**2)*H
+       zpsi_lan(:,1) = zpsi(:,ib,ik)/sqrt(ss)
+
+       ztpsi(:) = zpsi_lan(:,1)
+       call hpsi(ik)
+       alpha_lan(1) = sum(conjg(zhtpsi)*zpsi_lan(:,1))*H
+       ztpsi(:) = zhtpsi - alpha_lan(1)*zpsi_lan(:,1)
+       nmax = nlan
+       do j = 2, nlan
+         beta_lan(j) = sqrt(sum(abs(ztpsi)**2)*H)
+         if(beta_lan(j)==0d0)then
+           nmax = j-1
+           exit
+         end if
+         zpsi_lan(:,j) = ztpsi(:)/beta_lan(j)
+         ztpsi(:) = zpsi_lan(:,j)
+         call hpsi(ik)
+         alpha_lan(j) = sum(conjg(zhtpsi)*zpsi_lan(:,j))*H
+         ztpsi(:) = zhtpsi - alpha_lan(j)*zpsi_lan(:,j)
+
+       end do
+
+       allocate(ham_lan(nmax,nmax), zc(nmax))
+       lwork = 6*nmax**2
+       allocate(work_lp(lwork),rwork(3*nmax-2),w(nmax))
+
+       ham_lan = 0d0
+       do j = 1, nmax
+         ham_lan(j,j)=alpha_lan(j)
+       end do
+       do j = 2, nmax
+         ham_lan(j-1,j)=beta_lan(j)
+         ham_lan(j,j-1)=beta_lan(j)
+       end do
+
+       call dsyev('V', 'U', nmax, ham_lan, nmax, w, work_lp, lwork, info)
+
+       zc = 0d0; zc(1) = 1d0
+       zc = matmul(transpose(ham_lan),zc)
+       do j = 1, nmax
+         zc(j) = zc(j)*exp(-zi*dt_t*w(j))
+       end do
+       zc = matmul(ham_lan,zc)
+
+
+
+       deallocate(ham_lan,zc)
+       deallocate(work_lp,rwork,w)
+
+       ztpsi = 0d0
+       do j = 1, nmax
+         ztpsi = ztpsi + zc(j)*zpsi_lan(:,j)
+       end do
+       zpsi(:,ib,ik) = ztpsi
+
+     end do
+   end do
+
+   return
+ end subroutine prop_lanczos
  !--------------------------------------------------------------------------------------------------
  subroutine current(iter)
    use global_variables
