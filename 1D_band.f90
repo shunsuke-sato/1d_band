@@ -55,7 +55,6 @@ program main
   dt=0.08d0
   Nt=12000
   Acx=0d0
-  write(*,*)'ok1'
   read(*,*)filename
   read(*,*)Nx
   read(*,*)NK
@@ -71,14 +70,11 @@ program main
   read(*,*)f0_VAA_1
   read(*,*)phi_CEP_1
 
-  write(*,*)'ok2'
   call preparation
 
-  write(*,*)'ok3'
   call ground_state
 
 !  stop
-  write(*,*)'ok4'
   call input_Ac
 
 
@@ -390,6 +386,7 @@ subroutine preparation
          end if
        enddo
 
+
    return
  end subroutine input_Ac
  !--------------------------------------------------------------------------------------------------
@@ -432,9 +429,9 @@ subroutine preparation
    real(8) :: dt_t
 
    dt_t = 0.5d0*dt
-   call prop_taylor(dt_t)
+!   call prop_taylor(dt_t)
 
-!   call prop_lanczos(dt_t)
+   call prop_lanczos(dt_t)
 
  end subroutine dt_evolve_half_dt
  !--------------------------------------------------------------------------------------------------
@@ -450,7 +447,7 @@ subroutine preparation
        ztpsi(:)=zpsi(:,ib,ik)
        zfac=1d0
        do iexp=1,4
-         zfac=zfac*(-zI*dt)/dble(iexp)
+         zfac=zfac*(-zI*dt_t)/dble(iexp)
          call hpsi(ik)
          zpsi(:,ib,ik)=zpsi(:,ib,ik)+zfac*zhtpsi(:)
          ztpsi(:)=zhtpsi(:)
@@ -465,7 +462,7 @@ subroutine preparation
    use global_variables
    implicit none
    real(8),intent(in) :: dt_t
-   integer,parameter :: nlan = 8
+   integer,parameter :: nlan = 16
    complex(8) :: zpsi_Lan(Nx,nlan)
    real(8) :: alpha_lan(nlan),beta_lan(2:nlan)
    real(8),allocatable :: ham_lan(:,:)
@@ -485,7 +482,6 @@ subroutine preparation
 
    do ik=1,NK
      do ib=1,NBocc
-
        ss = sum(abs(zpsi(:,ib,ik))**2)*H
        zpsi_lan(:,1) = zpsi(:,ib,ik)/sqrt(ss)
 
@@ -498,6 +494,7 @@ subroutine preparation
          beta_lan(j) = sqrt(sum(abs(ztpsi)**2)*H)
          if(beta_lan(j)==0d0)then
            nmax = j-1
+           write(*,*)"Warning: truncation in the Lanczos procedure"
            exit
          end if
          zpsi_lan(:,j) = ztpsi(:)/beta_lan(j)
@@ -532,14 +529,14 @@ subroutine preparation
 
 
 
-       deallocate(ham_lan,zc)
-       deallocate(work_lp,rwork,w)
-
        ztpsi = 0d0
        do j = 1, nmax
          ztpsi = ztpsi + zc(j)*zpsi_lan(:,j)
        end do
        zpsi(:,ib,ik) = ztpsi
+
+       deallocate(ham_lan,zc)
+       deallocate(work_lp,rwork,w)
 
      end do
    end do
